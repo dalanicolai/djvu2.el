@@ -932,6 +932,110 @@ If INVERT is non-nil apply inverse transformation."
         (format "#%02X%02X%02X"
                 (mix 1 3) (mix 3 5) (mix 5 7))))))
 
+;;; Djvu annotations draw
+(defun djvu-annots-listify ()
+  (interactive)
+  (let ((buffer (get-buffer-create "*annot-list*")))
+    (with-current-buffer (djvu-ref annot-buf)
+      (copy-to-buffer "*annot-list*" (point-min) (point-max)))
+    (with-current-buffer buffer
+      (while (re-search-forward " \\(#[[:alnum:]]+\\)" nil t)
+        (replace-match " \"\\1\""))
+      (goto-char (point-min))
+      (insert "(setq djvu-annots '(")
+      (goto-char (point-max))
+      (insert "))")
+      (emacs-lisp-mode)
+      (indent-region (point-min) (point-max))
+      (eval-buffer))))
+
+(defun djvu-annot-area (annot-geom-list image-size scaling-factor)
+  (let ((scaled-list (mapcar (lambda (x) (* x scaling-factor)) (cdr annot-geom-list))))
+    (format (cond ((equal (car annot-geom-list) 'rect) "%s,%s,%s,%s")
+                  ((equal (car annot-geom-list) 'line) "%s,%s %s,%s"))
+            (nth 0 scaled-list)
+            (- image-size (nth 1 scaled-list))
+            (nth 2 scaled-list)
+            (- image-size (nth 3 scaled-list)))))
+
+(defun djvu-annot-arrow-head (annot-geom-list image-size scaling-factor color)
+  (let* ((scaled-list (mapcar (lambda (x) (* x scaling-factor)) (cdr annot-geom-list)))
+         (rot-rad (let* ((dy (- (- image-size (nth 3 scaled-list)) (- image-size (nth 1 scaled-list))))
+                         (dx (- (nth 2 scaled-list) (nth 0 scaled-list)))
+                         (angle (atan (/ dy dx))))
+                    (if (< dx 0)
+                        (+ angle 3.14)
+                      angle)))
+         (rot-deg (/ (* rot-rad 180) 3.14)))
+    (format " -draw \"stroke %s translate %s,%s rotate %s path 'M 0,0  l -15,-5  -0,+10  +15,-5 z'\""
+            color
+            (nth 2 scaled-list)
+            (- image-size (nth 3 scaled-list))
+            rot-deg)))
+
+
+(defun djvu-annots-draw (image-size scaling-factor)
+  (let ((convert-args ""))
+    (dolist (x djvu-annots)
+      (when (equal (car x) 'maparea)
+        (let* ((annot-geom-lists (nth 3 x))
+               (annot-geom-list (if (listp (car annot-geom-lists))
+                                    (car annot-geom-lists)
+                                  annot-geom-lists)))
+          (let ((arg ""))
+            (cond ((equal (car annot-geom-list) 'line)
+                   (let ((stroke (car (alist-get 'lineclr x)))
+                         (width (car (alist-get 'width x))))
+                     (setq convert-args
+                           (concat convert-args
+                                   " -stroke " (if (stringp stroke)
+                                                   (concat "'" stroke "' ")
+                                                 (if stroke
+                                                     (format "%s " stroke))
+                                                 "Black ")
+                                   "-strokewidth " (if width
+                                                       (number-to-string width)
+                                                     "2")
+                                   " -draw 'line " (djvu-annot-area annot-geom-list image-size scaling-factor)
+                                   "'"
+                                   (when (assoc 'arrow x)
+                                     (djvu-annot-arrow-head annot-geom-list
+                                                            image-size scaling-factor
+                                                            stroke))))))
+                  ((equal (car annot-geom-list) 'rect)
+                   (let ((fill (car (alist-get 'hilite x)))
+                         (opacity (car (alist-get 'opacity x))))
+                     (setq convert-args
+                           (concat convert-args
+                                   " -fill " (if (stringp fill)
+                                                 (concat "'" fill "' ")
+                                               (if fill
+                                                   (format "%s " fill))
+                                               "LightGoldenrod ")
+                                   " -stroke " (if (stringp fill)
+                                                 (concat "'" fill "' ")
+                                               (if fill
+                                                   (format "%s " fill))
+                                               "Black ")
+                                   " -strokewidth 1 "
+                                   "-draw 'fill-opacity " (if opacity
+                                                              (number-to-string (/ (car (alist-get 'opacity x)) 100.0))
+                                                            "0.3")
+                                   (when (not fill)
+                                     " stroke-opacity 0.5 stroke-dasharray 5 3")
+                                   " rectangle " (djvu-annot-area annot-geom-list image-size scaling-factor)
+                                   "'"))))
+                  )))))
+    ;; )))
+    (when convert-args
+      (call-shell-region
+       (point-min)
+       (point-max)
+       (concat "convert -" convert-args " -")
+       ;; (message (concat "convert -" convert-args " -"))
+       t
+       t))))
+
 ;;; Djvu modes
 
 (defvar djvu-read-mode-map
@@ -3498,6 +3602,7 @@ file SCRIPT. DOC defaults to the current Djvu document."
             ([drag-mouse-2]   . djvu-mouse-line-area)
             ([S-drag-mouse-2] . djvu-mouse-line-area-horiz)
             ([C-drag-mouse-2] . djvu-mouse-line-area-vert)
+            ([C-S-drag-mouse-2] . djvu-mouse-line-area-arrow)
             ;;
             ([down-mouse-1]   . djvu-mouse-drag-track-area)
             ([S-down-mouse-1] . djvu-mouse-drag-track-area)
@@ -3508,6 +3613,8 @@ file SCRIPT. DOC defaults to the current Djvu document."
                                   (djvu-mouse-drag-track-area event 'horiz)))
             ([C-down-mouse-2] . (lambda (event) (interactive "e")
                                   (djvu-mouse-drag-track-area event 'vert)))
+            ([C-S-down-mouse-2] . (lambda (event) (interactive "e")
+                                    (djvu-mouse-drag-track-area event 'arrow)))
             ;; FIXME: The following binding has no effect.  Why??
             ([M-drag-mouse-1] . djvu-mouse-word-area)
             ([M-down-mouse-1] . djvu-mouse-drag-track-area)
@@ -3545,8 +3652,10 @@ Otherwise remove the image."
         (let* ((isize (or isize
                          (nth 1 (djvu-ref image))
                          djvu-image-size))
+               (scaling-factor (/ isize (float (cdr djvu-doc-pagesize))))
                (doc djvu-doc)
                (inhibit-quit t))
+          (djvu-annots-listify)
           (with-temp-buffer
             (set-buffer-multibyte nil)
             (let* ((coding-system-for-read 'raw-text)
@@ -3558,6 +3667,7 @@ Otherwise remove the image."
                                          "-format=ppm"
                                          (format "-page=%d" (djvu-ref page doc))
                                          (djvu-ref file doc))))
+              (djvu-annots-draw isize scaling-factor)
               (unless (zerop status)
                 (error "Ddjvu error %s" status))
               (djvu-set image
@@ -3740,6 +3850,10 @@ Otherwise remove the image."
   (interactive "e")
   (djvu-mouse-line-area-internal event 'vert))
 
+(defun djvu-mouse-line-area-arrow (event)
+  (interactive "e")
+  (djvu-mouse-line-area-internal event 'arrow))
+
 (defun djvu-mouse-line-area-internal (event &optional dir)
   (djvu-with-event-buffer event
     (let* ((line (djvu-event-to-area event))
@@ -3752,7 +3866,13 @@ Otherwise remove the image."
             ((eq dir 'vert)
              (setq line (list (nth 0 line) (nth 1 line)
                               (nth 0 line) (nth 3 line)))))
-      (djvu-line-area nil text line nil nil djvu-line-width djvu-color-line))))
+      (if (eq dir 'arrow)
+          (djvu-line-area nil text line nil t djvu-line-width djvu-color-line)
+        (djvu-line-area nil text line nil nil djvu-line-width djvu-color-line))
+      (djvu-set image nil)
+      (djvu-image-toggle)
+      (djvu-image-toggle)
+)))
 
 (defun djvu-line-area (url text line &optional border arrow width lineclr)
   ;; Record position where annotation was made.
