@@ -1,10 +1,11 @@
 ;;; djvu.el --- Edit and view Djvu files via djvused -*- lexical-binding: t -*-
 
-;; Copyright (C) 2011-2018  Free Software Foundation, Inc.
+;; Copyright (C) 2011-2020  Free Software Foundation, Inc.
 
 ;; Author: Roland Winkler <winkler@gnu.org>
+;;   Daniel Nicolai <dalanicolai@gmail.com>
 ;; Keywords: files, wp
-;; Version: 1.1
+;; Version: 2.0
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -949,14 +950,22 @@ If INVERT is non-nil apply inverse transformation."
       (indent-region (point-min) (point-max))
       (eval-buffer))))
 
-(defun djvu-annot-area (annot-geom-list image-size scaling-factor)
-  (let ((scaled-list (mapcar (lambda (x) (* x scaling-factor)) (cdr annot-geom-list))))
-    (format (cond ((equal (car annot-geom-list) 'rect) "%s,%s,%s,%s")
-                  ((equal (car annot-geom-list) 'line) "%s,%s %s,%s"))
-            (nth 0 scaled-list)
-            (- image-size (nth 1 scaled-list))
-            (nth 2 scaled-list)
-            (- image-size (nth 3 scaled-list)))))
+(defun djvu-annot-area (annot-geom-list image-size scaling-factor &optional caption)
+  (let* ((scaled-list (mapcar (lambda (x) (* x scaling-factor)) (cdr annot-geom-list)))
+         (x1 (nth 0 scaled-list))
+         (y1 (- image-size (nth 1 scaled-list)))
+         (x2 (nth 2 scaled-list))
+         (y2 (- image-size (nth 3 scaled-list))))
+    (if (equal (car annot-geom-list) 'text)
+        (if caption
+            (format "%sx%s" (- x2 x1) (- y1 y2))
+          (format "+%s+%s" x1 y2))
+      (format (cond ((equal (car annot-geom-list) 'rect) "%s,%s,%s,%s")
+                    ((equal (car annot-geom-list) 'line) "%s,%s %s,%s"))
+              x1
+              y1
+              x2
+              y2))))
 
 (defun djvu-annot-arrow-head (annot-geom-list image-size scaling-factor color)
   (let* ((scaled-list (mapcar (lambda (x) (* x scaling-factor)) (cdr annot-geom-list)))
@@ -967,12 +976,12 @@ If INVERT is non-nil apply inverse transformation."
                         (+ angle 3.14)
                       angle)))
          (rot-deg (/ (* rot-rad 180) 3.14)))
-    (format " -draw \"stroke %s translate %s,%s rotate %s path 'M 0,0  l -15,-5  -0,+10  +15,-5 z'\""
+    (format " -draw \"stroke %s fill %s translate %s,%s rotate %s path 'M 0,0  l -15,-5  -0,+10  +15,-5 z'\""
+            color
             color
             (nth 2 scaled-list)
             (- image-size (nth 3 scaled-list))
             rot-deg)))
-
 
 (defun djvu-annots-draw (image-size scaling-factor)
   (let ((convert-args ""))
@@ -981,7 +990,8 @@ If INVERT is non-nil apply inverse transformation."
         (let* ((annot-geom-lists (nth 3 x))
                (annot-geom-list (if (listp (car annot-geom-lists))
                                     (car annot-geom-lists)
-                                  annot-geom-lists)))
+                                  annot-geom-lists))
+               (text (nth 2 x)))
           (let ((arg ""))
             (cond ((equal (car annot-geom-list) 'line)
                    (let ((stroke (car (alist-get 'lineclr x)))
@@ -1002,6 +1012,37 @@ If INVERT is non-nil apply inverse transformation."
                                      (djvu-annot-arrow-head annot-geom-list
                                                             image-size scaling-factor
                                                             stroke))))))
+                  ((equal (car annot-geom-list) 'text)
+                   (let* ((background (car (alist-get 'backclr x)))
+                          (fill (car (alist-get 'hilite x)))
+                          (opacity (car (alist-get 'opacity x)))
+                          (caption (make-temp-file "caption" nil ".ppm" (shell-command-to-string (concat "convert"
+                                                                                               " -background " (if (stringp background)
+                                                                                                                   (concat "'" background "' ")
+                                                                                                                 (if background
+                                                                                                                     (format "%s " background))
+                                                                                                                 "LightGoldenrod ")
+                                                                                               " -fill " (if (stringp fill)
+                                                                                                             (concat "'" fill "' ")
+                                                                                                           (if fill
+                                                                                                               (format "%s " fill))
+                                                                                                           "Black ")
+                                                                                               " -font Cantarell-Regular"
+                                                                                               " -size " (djvu-annot-area annot-geom-list image-size scaling-factor t)
+                                                                                               " caption:'" text "'"
+                                                                                               " ppm:-")))))
+                  (call-shell-region
+                   (point-min)
+                   (point-max)
+                   (concat "composite" ; -gravity northwest"
+                           " -geometry "
+                           (djvu-annot-area annot-geom-list image-size scaling-factor)
+                           " "
+                           caption
+                           " -"
+                           " -")
+                   t
+                   t)))
                   ((equal (car annot-geom-list) 'rect)
                    (let ((fill (car (alist-get 'hilite x)))
                          (opacity (car (alist-get 'opacity x))))
@@ -3836,7 +3877,11 @@ Otherwise remove the image."
                       (djvu-event-to-area event t) nil
                       (djvu-color-background color)
                       nil pushpin))
-    (djvu-image-rect)))
+    (djvu-image-rect)
+    (djvu-set image nil)
+    (djvu-image-toggle)
+    (djvu-image-toggle)
+))
 
 (defun djvu-mouse-line-area (event)
   (interactive "e")
