@@ -1077,6 +1077,19 @@ If INVERT is non-nil apply inverse transformation."
        t
        t))))
 
+(defun djvu-scroll-up-or-next-page ()
+  (interactive)
+  (scroll-up-line 5)
+  (when (= (window-vscroll) 0)
+    (djvu-next-page 1)))
+
+(defun djvu-scroll-down-or-previous-page ()
+  (interactive)
+  (if (not (= (window-vscroll) 0))
+      (scroll-down-line 5)
+    (djvu-prev-page 1)
+    (scroll-up-command)))
+
 ;;; Djvu modes
 
 (defvar djvu-read-mode-map
@@ -1090,6 +1103,8 @@ If INVERT is non-nil apply inverse transformation."
     ; (define-key km "<" 'beginning-of-buffer)
 
     (define-key km "i"           'djvu-image-toggle)
+    (define-key km (kbd "C-n") 'djvu-scroll-up-or-next-page)
+    (define-key km (kbd "C-p") 'djvu-scroll-down-or-previous-page)
     (define-key km "v"           'djvu-view)
     (define-key km "\C-c\C-v"    'djvu-view)
     (define-key km "n"           'djvu-next-page)
