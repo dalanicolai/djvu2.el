@@ -7,15 +7,22 @@ scrolling. Furthermore, djvu.el already includes features for annotating djvu
 files but it relies on DjView to visualize them. djvu2.el extends djvu.el so
 that visualizations are shown within Emacs. As shown in the demo below:
 
+*WARNING!!* You should use =C-x C-s= for saving annotations (before you close/save a
+ file). Do not rely on the usual way to save files, you can easily end up with
+ some invalid file.
+ 
+** Install
+   Install with quelpa using the follow lines
+  #+begin_src emacs-lisp
+    (quelpa '(djvu :fetcher git :url "git@github.com:dalanicolai/djvu2.el.git"))
+    (require 'djvu)
+  #+end_src 
+
+*** Spacemacs
+   For Spacemacs there is a [[https://github.com/dalanicolai/djvu-layer][djvu layer]] available.
+   
 #+CAPTION: Screencast created with [[https://github.com/phw/peek][Peek]]
 [[annots-demo.gif]]
 
 The annotations are somewhat customizable. It is quite straightforward to extend
 the functionality with Emacs lisp.
-
-*WARNING!!* You should use =C-x C-s= for saving annotations (before you close/save a
- file). Do not rely on the usual way to save files, you can easily end up with
- some invalid file.
-
-** Spacemacs
-   For Spacemacs there is a [[https://github.com/dalanicolai/djvu-layer][djvu layer]] available.
