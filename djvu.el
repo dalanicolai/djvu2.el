@@ -1090,6 +1090,17 @@ If INVERT is non-nil apply inverse transformation."
     (djvu-prev-page 1)
     (scroll-up-command)))
 
+(defun djvu-imenu-create-index ()
+  (with-current-buffer (djvu-ref bookmarks-buf djvu-doc)
+    (goto-char (point-max))
+    (let (alist)
+      (while (re-search-backward "\"#p*\\([0-9]+\\).*\"" nil t)
+        (let ((pagenumber (string-to-number (match-string-no-properties 1))))
+          (re-search-backward "(\"\\(.+\\)\"")
+          (push (cons (match-string-no-properties 1) pagenumber) alist)))
+      alist)))
+
+(add-hook 'djvu-read-mode-hook (lambda () (setq imenu-create-index-function 'djvu-imenu-create-index)))
 ;;; Djvu modes
 
 (defvar djvu-read-mode-map
