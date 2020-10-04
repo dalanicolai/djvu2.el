@@ -21,6 +21,11 @@ that visualizations are shown within Emacs. As shown in the demo below:
 *** Spacemacs
    For Spacemacs there is a [[https://github.com/dalanicolai/djvu-layer][djvu layer]] available.
    
+** Usage
+   Instructions for usage are found in the preliminary comments in the djvu.el
+   file itself. Keybindings can be looked up by typing =C-h m= when djvu-read mode
+   is active (i.e. when visiting a djvu-file).
+
 #+CAPTION: Screencast created with [[https://github.com/phw/peek][Peek]]
 [[annots-demo.gif]]
 
