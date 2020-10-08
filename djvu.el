@@ -207,6 +207,7 @@
 ;; zones: page, column, region, para, line, word, and char
 
 (require 'button)
+(require 'tablist)
 (eval-when-compile
   (require 'cl-lib))
 
@@ -932,6 +933,74 @@ If INVERT is non-nil apply inverse transformation."
                                (* b (djvu-substring-number background beg end 16))))))))
         (format "#%02X%02X%02X"
                 (mix 1 3) (mix 3 5) (mix 5 7))))))
+
+;;; Djvu occur
+
+(defun djvu-assert-djvu-buffer ()
+  (unless (equal major-mode 'djvu-read-mode)
+    (error "Buffer is not in DJView mode")))
+
+(defun djvu-sexp-line-to-string (line-sexp)
+  (mapconcat (lambda (x) (car (nthcdr 5 x))) (nthcdr 5 line-sexp) " "))
+
+(defun djvu-occur-tablist ()
+  (let ((pattern (read-string "List lines matching: "))
+        tablist
+        (file (djvu-ref file)))
+    (dotimes (x (djvu-ref pagemax))
+    ;; (dotimes (x 9)
+      (let ((page (+ x 1)))
+        (with-temp-buffer
+          (insert (shell-command-to-string
+                   (format "djvused %s -e 'select %s; print-txt'"
+                           (shell-quote-argument file)
+                           page
+                           pattern)))
+          (goto-char (point-min))
+          (while (search-forward-regexp (format "  (word .*%s.*\")" pattern) nil t)
+            (let ((word-sexp (read (match-string 0)))
+                  (line-sexp (read (thing-at-point 'list))))
+              (setq tablist (append
+                             tablist
+                             (list (list
+                                    nil
+                                    (vector
+                                     (format "%s" page)
+                                     (let* ((text (djvu-sexp-line-to-string line-sexp))
+                                            (start (string-match pattern text))
+                                            (end (match-end 0)))
+                                       (add-face-text-property
+                                        start
+                                        end
+                                        'match
+                                        nil
+                                        text)
+                                       text)))))))))))
+    tablist))
+
+(define-derived-mode djvu-occur-mode
+  tablist-mode "DJVUOccur"
+  "Major mode for browsing djvu search result"
+  (setq-local tabulated-list-format [("page" 10 nil) ("text" 80 nil)])
+  (setq-local tablist-operations-function
+              (lambda (op &rest _)
+                (cl-case op
+                  (supported-operations '(find-entry))
+                  (find-entry (let ((item (tabulated-list-get-entry)))
+                                (pop-to-buffer target-buffer)
+                                (djvu-goto-page (string-to-number (elt item 0))))))))
+  (tabulated-list-init-header))
+
+(defun djvu-occur ()
+  (interactive)
+  (djvu-assert-djvu-buffer)
+  (let ((djvu-tablist (djvu-occur-tablist))
+        (doc-buffer (current-buffer)))
+    (pop-to-buffer "djvu-occur")
+    (djvu-occur-mode)
+    (setq-local target-buffer doc-buffer)
+    (setq-local tabulated-list-entries djvu-tablist)
+    (tabulated-list-print)))
 
 ;;; Djvu annotations draw
 (defun djvu-annots-listify ()
