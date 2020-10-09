@@ -324,9 +324,9 @@ These extensions include the period."
 (defcustom djvu-outline-faces
   ;; Same as `outline-font-lock-faces'
   [font-lock-function-name-face font-lock-variable-name-face
-  font-lock-keyword-face font-lock-comment-face
-  font-lock-type-face font-lock-constant-face
-  font-lock-builtin-face font-lock-string-face]
+                                font-lock-keyword-face font-lock-comment-face
+                                font-lock-type-face font-lock-constant-face
+                                font-lock-builtin-face font-lock-string-face]
   "Vector of faces for Outline buffer."
   :group 'djvu
   :type '(sexp))
@@ -391,38 +391,38 @@ Bind this with `let' to select one of these schemes.")
      ,var))
 
 (djvu-defvar-local djvu-doc nil
-  "The \"ID\" of a Djvu document.
+                   "The \"ID\" of a Djvu document.
 This is actually the Read buffer acting as the master buffer
 of the Djvu document.  This buffer holds all buffer-local values
 of variables for a Djvu document.")
 
 ;; permanent-local like `buffer-file-name'
 (djvu-defvar-local djvu-doc-file nil
-  "File name of a Djvu document.")
+                   "File name of a Djvu document.")
 
 (djvu-defvar-local djvu-doc-text-buf nil
-  "Text buffer of a Djvu document.")
+                   "Text buffer of a Djvu document.")
 
 ;; "read" refers to the text-only display of djvu files inside emacs
 ;; "view" refers to external graphical viewers (default djview)
 
 (djvu-defvar-local djvu-doc-read-buf nil
-  "Read buffer of a Djvu document.")
+                   "Read buffer of a Djvu document.")
 
 (djvu-defvar-local djvu-doc-annot-buf nil
-  "Annotation buffer of a Djvu document.")
+                   "Annotation buffer of a Djvu document.")
 
 (djvu-defvar-local djvu-doc-shared-buf nil
-  "Shared annotation buffer of a Djvu document.")
+                   "Shared annotation buffer of a Djvu document.")
 
 (djvu-defvar-local djvu-doc-bookmarks-buf nil
-  "Bookmarks buffer of a Djvu document.")
+                   "Bookmarks buffer of a Djvu document.")
 
 (djvu-defvar-local djvu-doc-outline-buf nil
-  "Outline buffer of a Djvu document.")
+                   "Outline buffer of a Djvu document.")
 
 (djvu-defvar-local djvu-doc-view-proc nil
-  "List of djview processes for a Djvu document.")
+                   "List of djview processes for a Djvu document.")
 
 (defvar-local djvu-doc-resolve-url nil
   "Resolve URLs of a Djvu document.")
@@ -488,7 +488,7 @@ DOC defaults to `djvu-doc'."
 DOC defaults to `djvu-doc'."
   ;; `intern' VAR only once upon compilation
   (let ((var (intern (format "djvu-doc-%s" var))))
-   `(buffer-local-value ',var (or ,doc djvu-doc))))
+    `(buffer-local-value ',var (or ,doc djvu-doc))))
 
 (defun djvu-header-line (identifier)
   (list (propertize " " 'display '(space :align-to 0))
@@ -674,7 +674,7 @@ so that killing the current buffer kills all buffers visiting `djvu-doc'."
           (let ((doc djvu-doc))
             (setq buffers (djvu-buffers doc))
             (unless (memq nil (mapcar 'buffer-live-p buffers))
-                (djvu-save doc t))
+              (djvu-save doc t))
             (djvu-kill-view doc t))
         (error nil))
       ;; A function in `kill-buffer-hook' should not kill the buffer
@@ -922,15 +922,15 @@ If INVERT is non-nil apply inverse transformation."
     (if invert
         (cl-flet ((mix (beg end)
                        (max 0 (min #xFF
-                       (round (/ (- (djvu-substring-number color beg end 16)
-                                    (* b (djvu-substring-number background beg end 16)))
-                                 a))))))
+                                   (round (/ (- (djvu-substring-number color beg end 16)
+                                                (* b (djvu-substring-number background beg end 16)))
+                                             a))))))
           (format "#%02X%02X%02X"
                   (mix 1 3) (mix 3 5) (mix 5 7)))
       (cl-flet ((mix (beg end)
                      (max 0 (min #xFF
-                     (round (+ (* a (djvu-substring-number color beg end 16))
-                               (* b (djvu-substring-number background beg end 16))))))))
+                                 (round (+ (* a (djvu-substring-number color beg end 16))
+                                           (* b (djvu-substring-number background beg end 16))))))))
         (format "#%02X%02X%02X"
                 (mix 1 3) (mix 3 5) (mix 5 7))))))
 
@@ -943,12 +943,60 @@ If INVERT is non-nil apply inverse transformation."
 (defun djvu-sexp-line-to-string (line-sexp)
   (mapconcat (lambda (x) (car (nthcdr 5 x))) (nthcdr 5 line-sexp) " "))
 
+;; (defun djvu-occur-tablist ()
+;;   (let ((pattern (read-string "List lines matching: "))
+;;         tablist
+;;         (file (djvu-ref file)))
+;;     (dotimes (x (djvu-ref pagemax))
+;;     ;; (dotimes (x 9)
+;;       (let ((page (+ x 1)))
+;;         (with-temp-buffer
+;;           (insert (shell-command-to-string
+;;                    (format "djvused %s -e 'select %s; print-txt'"
+;;                            (shell-quote-argument file)
+;;                            page
+;;                            pattern)))
+;;           (goto-char (point-min))
+;;           (while (search-forward-regexp (format "  (word .*%s.*\")" pattern) nil t)
+;;             (let ((word-sexp (read (match-string 0)))
+;;                   (line-sexp (read (thing-at-point 'list))))
+;;               (setq tablist (append
+;;                              tablist
+;;                              (list (list
+;;                                     nil
+;;                                     (vector
+;;                                      (format "%s" page)
+;;                                      (let* ((text (djvu-sexp-line-to-string line-sexp))
+;;                                             (start (string-match pattern text))
+;;                                             (end (match-end 0)))
+;;                                        (add-face-text-property
+;;                                         start
+;;                                         end
+;;                                         'match
+;;                                         nil
+;;                                         text)
+;;                                        text)))))))))))
+;;     tablist))
+
+;; (define-derived-mode djvu-occur-mode
+;;   tablist-mode "DJVUOccur"
+;;   "Major mode for browsing djvu search result"
+;;   (setq-local tabulated-list-format [("page" 10 nil) ("text" 80 nil)])
+;;   (setq-local tablist-operations-function
+;;               (lambda (op &rest _)
+;;                 (cl-case op
+;;                   (supported-operations '(find-entry))
+;;                   (find-entry (let ((item (tabulated-list-get-entry)))
+;;                                 (pop-to-buffer target-buffer)
+;;                                 (djvu-goto-page (string-to-number (elt item 0))))))))
+;;   (tabulated-list-init-header))
+
 (defun djvu-occur-tablist ()
   (let ((pattern (read-string "List lines matching: "))
         tablist
         (file (djvu-ref file)))
     (dotimes (x (djvu-ref pagemax))
-    ;; (dotimes (x 9)
+      ;; (dotimes (x 9)
       (let ((page (+ x 1)))
         (with-temp-buffer
           (insert (shell-command-to-string
@@ -963,7 +1011,7 @@ If INVERT is non-nil apply inverse transformation."
               (setq tablist (append
                              tablist
                              (list (list
-                                    nil
+                                    `(:page ,page :edges ,(butlast (cdr word-sexp)))
                                     (vector
                                      (format "%s" page)
                                      (let* ((text (djvu-sexp-line-to-string line-sexp))
@@ -986,9 +1034,9 @@ If INVERT is non-nil apply inverse transformation."
               (lambda (op &rest _)
                 (cl-case op
                   (supported-operations '(find-entry))
-                  (find-entry (let ((item (tabulated-list-get-entry)))
+                  (find-entry (let ((item (tabulated-list-get-id)))
                                 (pop-to-buffer target-buffer)
-                                (djvu-goto-page (string-to-number (elt item 0))))))))
+                                (djvu-goto-page (plist-get item :page) nil (plist-get item :edges)))))))
   (tabulated-list-init-header))
 
 (defun djvu-occur ()
@@ -1085,33 +1133,37 @@ If INVERT is non-nil apply inverse transformation."
                    (let* ((background (car (alist-get 'backclr x)))
                           (fill (car (alist-get 'hilite x)))
                           (opacity (car (alist-get 'opacity x)))
-                          (caption (make-temp-file "caption" nil ".ppm" (shell-command-to-string (concat "convert"
-                                                                                               " -background " (if (stringp background)
-                                                                                                                   (concat "'" background "' ")
-                                                                                                                 (if background
-                                                                                                                     (format "%s " background))
-                                                                                                                 "LightGoldenrod ")
-                                                                                               " -fill " (if (stringp fill)
-                                                                                                             (concat "'" fill "' ")
-                                                                                                           (if fill
-                                                                                                               (format "%s " fill))
-                                                                                                           "Black ")
-                                                                                               " -font Cantarell-Regular"
-                                                                                               " -size " (djvu-annot-area annot-geom-list image-size scaling-factor t)
-                                                                                               " caption:'" text "'"
-                                                                                               " ppm:-")))))
-                  (call-shell-region
-                   (point-min)
-                   (point-max)
-                   (concat "composite" ; -gravity northwest"
-                           " -geometry "
-                           (djvu-annot-area annot-geom-list image-size scaling-factor)
-                           " "
-                           caption
-                           " -"
-                           " -")
-                   t
-                   t)))
+                          (caption (make-temp-file
+                                    "caption"
+                                    nil
+                                    ".ppm"
+                                    (shell-command-to-string
+                                     (concat
+                                      "convert"
+                                      " -background " (if (stringp background)
+                                                          (concat "'" background "' ")
+                                                        (if background (format "%s " background)) "LightGoldenrod ")
+                                      " -fill " (if (stringp fill)
+                                                    (concat "'" fill "' ")
+                                                  (when fill
+                                                    (format "%s " fill))
+                                                  "Black ")
+                                      " -font Cantarell-Regular"
+                                      " -size " (djvu-annot-area annot-geom-list image-size scaling-factor t)
+                                      " caption:'" text "'"
+                                      " ppm:-")))))
+                     (call-shell-region
+                      (point-min)
+                      (point-max)
+                      (concat "composite" ; -gravity northwest"
+                              " -geometry "
+                              (djvu-annot-area annot-geom-list image-size scaling-factor)
+                              " "
+                              caption
+                              " -"
+                              " -")
+                      t
+                      t)))
                   ((equal (car annot-geom-list) 'rect)
                    (let ((fill (car (alist-get 'hilite x)))
                          (opacity (car (alist-get 'opacity x))))
@@ -1123,10 +1175,10 @@ If INVERT is non-nil apply inverse transformation."
                                                    (format "%s " fill))
                                                "LightGoldenrod ")
                                    " -stroke " (if (stringp fill)
-                                                 (concat "'" fill "' ")
-                                               (if fill
-                                                   (format "%s " fill))
-                                               "Black ")
+                                                   (concat "'" fill "' ")
+                                                 (if fill
+                                                     (format "%s " fill))
+                                                 "Black ")
                                    " -strokewidth 1 "
                                    "-draw 'fill-opacity " (if opacity
                                                               (number-to-string (/ (car (alist-get 'opacity x)) 100.0))
@@ -1137,6 +1189,35 @@ If INVERT is non-nil apply inverse transformation."
                                    "'"))))
                   )))))
     ;; )))
+    (when convert-args
+      (call-shell-region
+       (point-min)
+       (point-max)
+       (concat "convert -" convert-args " -")
+       ;; (message (concat "convert -" convert-args " -"))
+       t
+       t))))
+
+(defun djvu-match-area (match image-size scaling-factor)
+  (let* ((scaled-list (mapcar (lambda (x) (* x scaling-factor)) match))
+         (x1 (nth 0 scaled-list))
+         (y1 (- image-size (nth 1 scaled-list)))
+         (x2 (nth 2 scaled-list))
+         (y2 (- image-size (nth 3 scaled-list))))
+    (format "%s,%s,%s,%s"
+            x1
+            y1
+            x2
+            y2)))
+
+(defun djvu-match-draw (match image-size scaling-factor)
+  (let ((convert-args ""))
+    (setq convert-args
+          (concat convert-args
+                  " -fill" " maroon "
+                  "-draw 'fill-opacity " "0.5"
+                  " rectangle " (djvu-match-area match image-size scaling-factor)
+                  "'"))
     (when convert-args
       (call-shell-region
        (point-min)
@@ -1175,12 +1256,12 @@ If INVERT is non-nil apply inverse transformation."
 (defvar djvu-read-mode-map
   (let ((km (make-sparse-keymap)))
     ;; `special-mode-map'
-    ; (define-key km " " 'scroll-up-command)
-    ; (define-key km [?\S-\ ] 'scroll-down-command)
-    ; (define-key km "\C-?" 'scroll-down-command)
-    ; (define-key km "?" 'describe-mode)
-    ; (define-key km ">" 'end-of-buffer)
-    ; (define-key km "<" 'beginning-of-buffer)
+                                        ; (define-key km " " 'scroll-up-command)
+                                        ; (define-key km [?\S-\ ] 'scroll-down-command)
+                                        ; (define-key km "\C-?" 'scroll-down-command)
+                                        ; (define-key km "?" 'describe-mode)
+                                        ; (define-key km ">" 'end-of-buffer)
+                                        ; (define-key km "<" 'beginning-of-buffer)
 
     (define-key km "i"           'djvu-image-toggle)
     (define-key km (kbd "C-n") 'djvu-scroll-up-or-next-page)
@@ -1396,12 +1477,12 @@ The annotations, shared annotations and bookmark buffers use this mode."
 (defvar djvu-outline-mode-map
   (let ((km (make-sparse-keymap)))
     ;; `special-mode-map'
-    ; (define-key km " " 'scroll-up-command)
-    ; (define-key km [?\S-\ ] 'scroll-down-command)
-    ; (define-key km "\C-?" 'scroll-down-command)
-    ; (define-key km "?" 'describe-mode)
-    ; (define-key km ">" 'end-of-buffer)
-    ; (define-key km "<" 'beginning-of-buffer)
+                                        ; (define-key km " " 'scroll-up-command)
+                                        ; (define-key km [?\S-\ ] 'scroll-down-command)
+                                        ; (define-key km "\C-?" 'scroll-down-command)
+                                        ; (define-key km "?" 'describe-mode)
+                                        ; (define-key km ">" 'end-of-buffer)
+                                        ; (define-key km "<" 'beginning-of-buffer)
 
     (define-key km "v"           'djvu-view-page)
     (define-key km "\C-c\C-v"    'djvu-view-page)
@@ -1500,7 +1581,7 @@ from file."
   ;; Djvu mode needs a local file.  If FILE is located on a remote system,
   ;; you can use something like `file-local-copy' to edit FILE.
   (if (file-remote-p file)
-    (user-error "Cannot handle remote Djvu file `%s'" file))
+      (user-error "Cannot handle remote Djvu file `%s'" file))
   (unless (and (file-regular-p file)
                (file-readable-p file))
     (user-error "Cannot open Djvu file `%s'" file))
@@ -1708,7 +1789,7 @@ document is usually the only way out."
   (djvu-find-file (djvu-ref file djvu-doc)
                   (djvu-ref page djvu-doc) nil nil noconfirm))
 
-(defun djvu-init-page (&optional page doc)
+(defun djvu-init-page (&optional page doc match)
   "Initialize PAGE for Djvu DOC.
 PAGE is re-initialized if we are already viewing it."
   (interactive (list (djvu-read-page)))
@@ -1771,7 +1852,7 @@ PAGE is re-initialized if we are already viewing it."
         (djvu-init-text object doc t)
 
         ;; Set up read buffer
-        (djvu-init-read object doc t)))))
+        (djvu-init-read object doc t match)))))
 
 (defalias 'djvu-goto-page 'djvu-init-page
   "Goto PAGE of Djvu document DOC.")
@@ -1919,11 +2000,11 @@ If prefix NEW is non-nil, always create a new Djview process."
           (error "px=%s, py=%s out of range" px py))
       (unless new (djvu-kill-view doc))
       (let ((process (apply 'start-process
-                    "djview" nil djvu-djview-command
-                    (format "-page=%s" (cdr (assq (djvu-ref page doc)
-                                                  (djvu-ref page-id doc))))
-                    (format "-showposition=%06f,%06f" px py)
-                    (append djvu-djview-options (list (djvu-ref file doc))))))
+                            "djview" nil djvu-djview-command
+                            (format "-page=%s" (cdr (assq (djvu-ref page doc)
+                                                          (djvu-ref page-id doc))))
+                            (format "-showposition=%06f,%06f" px py)
+                            (append djvu-djview-options (list (djvu-ref file doc))))))
         (set-process-sentinel
          process
          `(lambda (process event)
@@ -2171,7 +2252,7 @@ This command operates on the text buffer."
           (regexp-opt '("page" "column" "region" "para" "line"
                         "word" "char"))
           "\\)[ \t]+\\([0-9]+\\)[ \t]+\\([0-9]+\\)"
-             "[ \t]+\\([0-9]+\\)[ \t]+\\([0-9]+\\)[ \t\n]+")
+          "[ \t]+\\([0-9]+\\)[ \t]+\\([0-9]+\\)[ \t\n]+")
   "Regexp matching the beginning of a Djvu text zone.")
 
 (defun djvu-text-dpos (&optional point doc)
@@ -2326,7 +2407,7 @@ BUFFER defaults to `djvu-script-buffer'.  If BUFFER is t, use current buffer."
 
 ;;; Djvu Read mode
 
-(defun djvu-init-read (object &optional doc reset)
+(defun djvu-init-read (object &optional doc reset match)
   (with-current-buffer (djvu-ref read-buf doc)
     (let ((djvu-rect-list (djvu-ref rect-list doc))
           (dpos (unless reset (djvu-read-dpos nil doc)))
@@ -2339,7 +2420,7 @@ BUFFER defaults to `djvu-script-buffer'.  If BUFFER is t, use current buffer."
         (djvu-goto-read dpos)))
     (set-buffer-modified-p nil)
     (setq buffer-read-only t)
-    (djvu-image)))
+    (djvu-image nil match)))
 
 (defun djvu-insert-read (object)
   "Display text OBJECT recursively."
@@ -2723,7 +2804,7 @@ If URL is an internal url, go to that page."
         (pagesize (djvu-ref pagesize))
         (color (djvu-interactive-color djvu-color-highlight)))
     (list nil (read-string (format "(%s) Text: " color)
-                          nil nil nil djvu-inherit-input-method)
+                           nil nil nil djvu-inherit-input-method)
           (list (nth 0 dpos) (nth 1 dpos)
                 (+ (nth 0 dpos) (/ (car pagesize) 2))
                 (+ (nth 1 dpos) (/ (cdr pagesize) 30)))
@@ -3064,7 +3145,7 @@ Substring 1: area type, 2: coordinates, 3-6: individual coordinates.")
                                    (- (djvu-match-number 4) step)
                                    (+ (djvu-match-number 5) step)
                                    (+ (djvu-match-number 6) step))
-                             nil nil nil 2)))))))
+                           nil nil nil 2)))))))
 
 (defun djvu-shift-internal (shiftx shifty &optional all)
   "Shift Djvu mapareas rect and text by SHIFTX and SHIFTY.
@@ -3388,7 +3469,7 @@ If no such attribute exists insert a new one."
                                          nil nil nil 2))
                          ((string= attr "backclr")
                           (replace-match (save-match-data
-                                          (djvu-color-background color))
+                                           (djvu-color-background color))
                                          nil nil nil 2))
                          (t (message "Color update for attribute `%s' undefined"
                                      attr)))))
@@ -3770,7 +3851,7 @@ file SCRIPT. DOC defaults to the current Djvu document."
     ;; Go to DPOS if we disable `djvu-image-mode'.
     (if tmp (djvu-goto-read (djvu-ref read-pos)))))
 
-(defun djvu-image (&optional isize)
+(defun djvu-image (&optional isize match)
   "If `djvu-image-mode' is enabled, display image of current Djvu page.
 Otherwise remove the image."
   ;; Strange!  `djvu-image' modifies the buffer (its text properties).
@@ -3786,8 +3867,8 @@ Otherwise remove the image."
             (and isize
                  (not (eq isize (nth 1 (djvu-ref image))))))
         (let* ((isize (or isize
-                         (nth 1 (djvu-ref image))
-                         djvu-image-size))
+                          (nth 1 (djvu-ref image))
+                          djvu-image-size))
                (scaling-factor (/ isize (float (cdr djvu-doc-pagesize))))
                (doc djvu-doc)
                (inhibit-quit t))
@@ -3804,15 +3885,17 @@ Otherwise remove the image."
                                          (format "-page=%d" (djvu-ref page doc))
                                          (djvu-ref file doc))))
               (djvu-annots-draw isize scaling-factor)
+              (when match
+                (djvu-match-draw match isize scaling-factor))
               (unless (zerop status)
                 (error "Ddjvu error %s" status))
               (djvu-set image
-               (append (list (djvu-ref page doc) isize)
-                       ;; Images are lists
-                       (create-image (buffer-substring-no-properties
-                                      (point-min) (point-max))
-                                     'pbm t))
-               doc)))))
+                        (append (list (djvu-ref page doc) isize)
+                                ;; Images are lists
+                                (create-image (buffer-substring-no-properties
+                                               (point-min) (point-max))
+                                              'pbm t))
+                        doc)))))
     ;; Display image.
     (let (buffer-read-only)
       (if (= (point-min) (point-max)) (insert " "))
@@ -3825,17 +3908,17 @@ Otherwise remove the image."
   ;; Inspired by `mouse-drag-track'.
   (setq track-mouse t)
   (set-transient-map
-     (let ((map (make-sparse-keymap)))
-       (define-key map [mouse-movement]
-         (lambda (event) (interactive "e")
-           (djvu-with-event-buffer event
-             (djvu-image-rect (list 'down-mouse-1
-                                    (event-start start-event)
-                                    (event-end event))
-                              line))))
-       map)
-     t (lambda ()
-         (setq track-mouse nil))))
+   (let ((map (make-sparse-keymap)))
+     (define-key map [mouse-movement]
+       (lambda (event) (interactive "e")
+         (djvu-with-event-buffer event
+           (djvu-image-rect (list 'down-mouse-1
+                                  (event-start start-event)
+                                  (event-end event))
+                            line))))
+     map)
+   t (lambda ()
+       (setq track-mouse nil))))
 
 (defun djvu-image-rect (&optional event line)
   "For PPM image specified via EVENT mark rectangle by inverting bits."
@@ -3860,7 +3943,7 @@ Otherwise remove the image."
              (_ (unless (string-match "\\`P6\n\\([0-9]+\\) +\\([0-9]+\\)\n\\([0-9]+\\)\n" image)
                   (error "Not a PPM image")))
              (width (djvu-match-number 1 image))
-             ; (height (djvu-match-number 2 image))
+                                        ; (height (djvu-match-number 2 image))
              (depth (djvu-match-number 3 image))
              (i0 (match-end 0))
              (old-image (get-text-property (point-min) 'display)))
@@ -3945,7 +4028,7 @@ Otherwise remove the image."
     (djvu-image-rect event)
     (let ((color (djvu-interactive-color djvu-color-highlight)))
       (djvu-rect-area nil (read-string (format "(%s) Highlight: " color)
-                                      nil nil nil djvu-inherit-input-method)
+                                       nil nil nil djvu-inherit-input-method)
                       (list (djvu-event-to-area event t))
                       color djvu-opacity 'none))
     (djvu-image-rect)
@@ -3968,7 +4051,7 @@ Otherwise remove the image."
     (djvu-image-rect event)
     (let ((color (djvu-interactive-color djvu-color-highlight)))
       (djvu-text-area nil (read-string (format "(%s) %s: " color prompt)
-                                      nil nil nil djvu-inherit-input-method)
+                                       nil nil nil djvu-inherit-input-method)
                       (djvu-event-to-area event t) nil
                       (djvu-color-background color)
                       nil pushpin))
@@ -3976,7 +4059,7 @@ Otherwise remove the image."
     (djvu-set image nil)
     (djvu-image-toggle)
     (djvu-image-toggle)
-))
+    ))
 
 (defun djvu-mouse-line-area (event)
   (interactive "e")
@@ -4012,7 +4095,7 @@ Otherwise remove the image."
       (djvu-set image nil)
       (djvu-image-toggle)
       (djvu-image-toggle)
-)))
+      )))
 
 (defun djvu-line-area (url text line &optional border arrow width lineclr)
   ;; Record position where annotation was made.
@@ -4298,7 +4381,7 @@ With prefix OUTLINE non-nil remove Outline, too."
 BMK is a bookmark record, not a bookmark name (i.e., not a string).
 Changes current buffer and point and returns nil, or signals a `file-error'."
   (let ((file          (bookmark-get-filename bmk))
-	(buf           (bookmark-prop-get bmk 'buffer))
+	      (buf           (bookmark-prop-get bmk 'buffer))
         (d-buffer      (bookmark-prop-get bmk 'd-buffer))
         (page          (bookmark-prop-get bmk 'page))
         (forward-str   (bookmark-get-front-context-string bmk))
