@@ -634,6 +634,43 @@ Preserve FILE if `djvu-test' is non-nil."
   (interactive (list (completing-read "Color: " djvu-color-alist nil t)))
   (setq djvu-color-highlight color))
 
+;;; djvu-restore
+(defcustom djvu-restore-filename (if dotspacemacs-directory
+                                     (concat dotspacemacs-directory ".djvu-view-restore")
+                                   ".djvu-view-restore")
+  "Filename to save the last known pdf position."
+  :group 'djvu
+  :type 'string)
+
+(defun djvu-restore ()
+  (when (member major-mode '(djvu-read-mode djvu-script-mode djvu-outline-mode))
+    (let ((page (djvu-restore-get-page)))
+      (when page (djvu-goto-page page)))))
+
+(defun djvu-restore-save ()
+  (when (member major-mode '(djvu-read-mode djvu-script-mode djvu-outline-mode))
+    (djvu-restore-set-page (djvu-ref page))))
+
+(defun djvu-restore-get-alist ()
+  (when (file-exists-p djvu-restore-filename)
+    (with-temp-buffer
+      (insert-file-contents-literally
+       djvu-restore-filename)
+      (read (buffer-string)))))
+
+(defun djvu-restore-get-page ()
+  "Return restore page."
+  (let* ((alist (djvu-restore-get-alist)))
+    (cdr (assoc (djvu-ref file) alist))))
+
+(defun djvu-restore-set-page (page)
+  "Save restore PAGE."
+  (let ((alist (djvu-restore-get-alist)))
+    (setf (alist-get (djvu-ref file) alist nil nil 'equal) page)
+    (with-temp-file djvu-restore-filename
+      (insert (let (print-length) (prin1-to-string alist))))))
+
+
 (defun djvu-kill-view (&optional doc all)
   "Kill most recent Djview process for DOC.
 If ALL is non-nil, kill all Djview processes."
@@ -664,6 +701,7 @@ This relies on `djvu-kill-doc-all' for doing the real work."
   "Kill all buffers visiting `djvu-doc' except for the current buffer.
 This function is added to `kill-buffer-hook' of all buffers visiting `djvu-doc'
 so that killing the current buffer kills all buffers visiting `djvu-doc'."
+  (djvu-restore-save)
   (unless djvu-in-kill-doc
     (let ((djvu-in-kill-doc t)
           buffers)
@@ -1770,7 +1808,8 @@ from file."
 
     (if view (djvu-view doc))
     (unless noselect (switch-to-buffer (djvu-ref read-buf doc)))
-    (djvu-ref read-buf doc)))
+    (djvu-ref read-buf doc)
+    (djvu-restore)))
 
 (defun djvu-revert-buffer (&optional _ignore-auto noconfirm _preserve-modes)
   "Revert buffers for the current Djvu document.
@@ -3894,7 +3933,8 @@ Otherwise remove the image."
                                 ;; Images are lists
                                 (create-image (buffer-substring-no-properties
                                                (point-min) (point-max))
-                                              'pbm t))
+                                              'pbm t
+                                              :map '(((rect . ((0 . 0) . (100 . 100))) area4 (:pointer hand)))))
                         doc)))))
     ;; Display image.
     (let (buffer-read-only)
