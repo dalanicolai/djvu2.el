@@ -1,16 +1,26 @@
 * djvu2.el
 ** Read and annotate djvu with Emacs
    
-[[https://elpa.gnu.org/packages/djvu.html][djvu.el]] offers basic functionality to show/read djvu files. However it does not
-include functions for smooth scrolling. djvu2.el implements functions for smooth
-scrolling. Furthermore, djvu.el already includes features for annotating djvu
-files but it relies on DjView to visualize them. djvu2.el extends djvu.el so
-that visualizations are shown within Emacs. As shown in the demo below:
+[[https://elpa.gnu.org/packages/djvu.html][The original djvu.el]] is a great package for annotating djvu files, but it only
+offers basic functionality to show/read djvu files.[fn:its docstring mentions
+that it relies on djview for that] The djvu.el in this package
+extends the original djvu.el with the following functions, all heavily inspired
+by the [[https://github.com/politza/pdf-tools][pdf-tools]] package:
 
+- smooth scrolling [fn:Has been implemented in the original djvu.el in the meantime]
+- show various types of annotations (as shown in [[Demo][the demo below]]) 
+- simple (not asynchronous as in pdf-tools) djvu occur function (=djvu-occur=)
+- show color inverted document, i.e. somewhat equivalent to pdf-tools its
+  midnight-minor-mode (=djvu-invert=)
+
+All extended functionality is implemented in a very basic straightforward way
+and most of the code can be much improved/better integrated (you are welcome to
+;), but everything works very fine.
+  
 *WARNING!!* You should use =C-x C-s= for saving annotations (before you close/save a
  file). Do not rely on the usual way to save files, you can easily end up with
  some invalid file.
- 
+
 ** Install
    Install with quelpa using the follow lines
   #+begin_src emacs-lisp
@@ -23,9 +33,10 @@ that visualizations are shown within Emacs. As shown in the demo below:
    
 ** Usage
    Instructions for usage are found in the preliminary comments in the djvu.el
-   file itself. Keybindings can be looked up by typing =C-h m= when djvu-read mode
+   file itself. Keybindings can be looked up by typing =C-h m= when djvu-read-mode
    is active (i.e. when visiting a djvu-file).
 
+** Demo
 #+CAPTION: Screencast created with [[https://github.com/phw/peek][Peek]]
 [[annots-demo.gif]]
 

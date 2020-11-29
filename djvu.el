@@ -346,6 +346,11 @@ Used by `djvu-region-string'."
   :group 'djvu
   :type 'boolean)
 
+(defcustom djvu-invert nil
+  "If non-nil `djvu-rect-area' does not create multiple rects for same areas."
+  :group 'djvu
+  :type 'boolean)
+
 ;; Internal variables
 
 (defvar djvu-test nil
@@ -1264,6 +1269,27 @@ If INVERT is non-nil apply inverse transformation."
        ;; (message (concat "convert -" convert-args " -"))
        t
        t))))
+
+(defun djvu-invert-draw (image-size scaling-factor)
+  (let ((convert-args ""))
+    (setq convert-args
+          (concat convert-args
+                  " -channel" " RGB "
+                  "-negate "))
+    (when convert-args
+      (call-shell-region
+       (point-min)
+       (point-max)
+       (concat "convert -" convert-args " -")
+       ;; (message (concat "convert -" convert-args " -"))
+       t
+       t))))
+
+(defun djvu-toggle-invert ()
+  (interactive)
+  (setq djvu-invert (if djvu-invert
+                        nil
+                      t)))
 
 (defun djvu-scroll-up-or-next-page ()
   (interactive)
@@ -3877,6 +3903,7 @@ file SCRIPT. DOC defaults to the current Djvu document."
             ([drag-mouse-3]   . djvu-mouse-word-area) ; substitute
             ([down-mouse-3]   . djvu-mouse-drag-track-area) ; substitute
             ;;
+            ("C-c m" . djvu-invert)
             ("+" . djvu-image-zoom-in)
             ("-" . djvu-image-zoom-out))
   (if (and djvu-image-mode
@@ -3926,6 +3953,8 @@ Otherwise remove the image."
               (djvu-annots-draw isize scaling-factor)
               (when match
                 (djvu-match-draw match isize scaling-factor))
+              (when djvu-invert 
+                (djvu-invert-draw isize scaling-factor))
               (unless (zerop status)
                 (error "Ddjvu error %s" status))
               (djvu-set image
