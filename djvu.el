@@ -1021,52 +1021,133 @@ If INVERT is non-nil apply inverse transformation."
 ;;                                        text)))))))))))
 ;;     tablist))
 
-;; (define-derived-mode djvu-occur-mode
-;;   tablist-mode "DJVUOccur"
-;;   "Major mode for browsing djvu search result"
-;;   (setq-local tabulated-list-format [("page" 10 nil) ("text" 80 nil)])
-;;   (setq-local tablist-operations-function
-;;               (lambda (op &rest _)
-;;                 (cl-case op
-;;                   (supported-operations '(find-entry))
-;;                   (find-entry (let ((item (tabulated-list-get-entry)))
-;;                                 (pop-to-buffer target-buffer)
-;;                                 (djvu-goto-page (string-to-number (elt item 0))))))))
-;;   (tabulated-list-init-header))
+(defun djvu-occur-exhaust-words (pattern word-list parent-list)
+  (let (results
+        (word (car word-list)))
+    (while word
+      (if (string-match pattern (nth 5 word))
+          (setq results (cons (list word parent-list) results)))
+      (setq word-list (cdr word-list))
+      (setq word (car word-list)))
+    results))
+
+(defun djvu-occur-exhaust-lines (pattern line-list)
+  (let (results
+        (line (car line-list)))
+    (while line
+      (if (stringp (nth 5 line))
+          (when (string-match pattern (nth 5 line))
+            (setq results (cons line results)))
+        (setq results
+              (append (djvu-occur-exhaust-words pattern (nthcdr 5 line) line)
+                      results)))
+      (setq line-list (cdr line-list))
+      (setq line (car line-list)))
+    results))
+
+(defun djvu-occur-exhaust-paras (pattern para-list)
+  (let (results
+        (para (car para-list)))
+    (while para
+      (if (stringp (nth 5 para))
+          (when (string-match pattern (nth 5 para))
+            (setq results (cons para results)))
+        (if (equal (car (nth 5 para)) 'line)
+            (setq results
+                  (append (djvu-occur-exhaust-lines pattern (nthcdr 5 para))
+                          results))
+          (setq results
+                (append (djvu-occur-exhaust-words pattern (nthcdr 5 para) para)
+                        results))))
+      (setq para-list (cdr para-list))
+      (setq para (car para-list)))
+    results))
+
+(defun djvu-occur-exhaust-columns (pattern column-list)
+  (let (results
+        (column (car column-list)))
+    (while column
+      (setq results (append (djvu-occur-exhaust-paras pattern (nthcdr 5 column))
+                                 results))
+      (setq column-list (cdr column-list))
+      (setq column (car column-list)))
+    results))
+
+(defun djvu-set-text ()
+  (read
+   (concat "("
+           (shell-command-to-string
+            "djvutxt -detail=word 'The Art of Experimental Physics - Preston, Daryl W_.djvu'")
+           ")")))
+
+;; (setq djvu-text-pages
+;;       (read
+;;        (concat "("
+;;                (shell-command-to-string
+;;                 "djvutxt -detail=word 'The Art of Experimental Physics - Preston, Daryl W_.djvu'")
+;;                ")")))
+
+;; (defun djvu-occur-extract-pages-text ()
+;;   (let ((i 0)
+;;         text-pages
+;;         (djvu-text-pages (djvu-set-text)))
+;;     (dolist (column-list djvu-text-pages text-pages)
+;;       (let* ((contents (nth 5 column-list))
+;;              (results (cond ((stringp contents)
+;;                                   contents)
+;;                                  ((equal (car contents) 'line)
+;;                                   (djvu-occur-exhaust-lines (nthcdr 5 column-list)))
+;;                                  ((equal (car contents) 'column)
+;;                                   (djvu-occur-exhaust-columns (nthcdr 5 column-list))))))
+;;         (when results
+;;           (setq text-pages (cons (cons i results) text-pages)))
+;;         (setq i (1+ i))))))
 
 (defun djvu-occur-tablist ()
+  (interactive)
   (let ((pattern (read-string "List lines matching: "))
         tablist
-        (file (djvu-ref file)))
-    (dotimes (x (djvu-ref pagemax))
-      ;; (dotimes (x 9)
-      (let ((page (+ x 1)))
-        (with-temp-buffer
-          (insert (shell-command-to-string
-                   (format "djvused %s -e 'select %s; print-txt'"
-                           (shell-quote-argument file)
-                           page
-                           pattern)))
-          (goto-char (point-min))
-          (while (search-forward-regexp (format "  (word .*%s.*\")" pattern) nil t)
-            (let ((word-sexp (read (match-string 0)))
-                  (line-sexp (read (thing-at-point 'list))))
-              (setq tablist (append
-                             tablist
-                             (list (list
-                                    `(:page ,page :edges ,(butlast (cdr word-sexp)))
-                                    (vector
-                                     (format "%s" page)
-                                     (let* ((text (djvu-sexp-line-to-string line-sexp))
-                                            (start (string-match pattern text))
-                                            (end (match-end 0)))
-                                       (add-face-text-property
-                                        start
-                                        end
-                                        'match
-                                        nil
-                                        text)
-                                       text)))))))))))
+        (i 0)
+        text-pages
+        (djvu-text-pages (read
+                          (concat "("
+                                  (shell-command-to-string
+                                   (format 
+                                    "djvutxt -detail=word '%s'" (djvu-ref file)))
+                                  ")"))))
+    (dolist (column-list djvu-text-pages text-pages)
+      (let* ((contents (nth 5 column-list))
+             (results (cond ((stringp contents)
+                                  contents)
+                                 ((equal (car contents) 'line)
+                                  (djvu-occur-exhaust-lines pattern (nthcdr 5 column-list)))
+                                 ((equal (car contents) 'column)
+                                  (djvu-occur-exhaust-columns pattern (nthcdr 5 column-list))))))
+        (when results
+          (setq text-pages (append
+                            (mapcar (lambda (x) (cons i x)) results)
+                            text-pages)))
+        (setq i (1+ i))))
+              (dolist (x (nreverse text-pages))
+                (let ((page (+ (car x) 1))
+                      (word-sexp (nth 1 x))
+                      (line-sexp (nth 2 x)))
+                  (setq tablist (append
+                                 tablist
+                                 (list (list
+                                        `(:page ,page :edges ,(butlast (cdr word-sexp)))
+                                        (vector
+                                         (format "%s" page)
+                                         (let* ((text (djvu-sexp-line-to-string line-sexp))
+                                                (start (string-match pattern text))
+                                                (end (match-end 0)))
+                                           (add-face-text-property
+                                            start
+                                            end
+                                            'match
+                                            nil
+                                            text)
+                                           text))))))))
     tablist))
 
 (define-derived-mode djvu-occur-mode

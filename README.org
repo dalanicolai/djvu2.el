@@ -9,7 +9,8 @@ by the [[https://github.com/politza/pdf-tools][pdf-tools]] package:
 
 - smooth scrolling [fn:Has been implemented in the original djvu.el in the meantime]
 - show various types of annotations (as shown in [[Demo][the demo below]]) 
-- simple (not asynchronous as in pdf-tools) djvu occur function (=djvu-occur=)
+- simple (not asynchronous as in pdf-tools, but still fast) djvu occur function
+  (=djvu-occur=)
 - show color inverted document, i.e. somewhat equivalent to pdf-tools its
   midnight-minor-mode (=djvu-invert=)
 
