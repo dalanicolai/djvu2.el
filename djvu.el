@@ -1150,6 +1150,21 @@ If INVERT is non-nil apply inverse transformation."
                                            text))))))))
     tablist))
 
+(defvar djvu-occur-mode-map
+  (let ((kmap (make-sparse-keymap)))
+    (set-keymap-parent kmap tablist-mode-map)
+    (define-key kmap (kbd "RET") 'tablist-find-entry)
+    (define-key kmap (kbd "C-o") 'tablist-find-entry)
+    ;;     (define-key kmap (kbd "SPC") 'djvu-occur-view-occurrence)
+    ;;     (define-key kmap (kbd "C-c C-f") 'next-error-follow-minor-mode)
+    ;;     (define-key kmap (kbd "g") 'djvu-occur-revert-buffer-with-args)
+    ;;     (define-key kmap (kbd "K") 'djvu-occur-abort-search)
+    ;;     (define-key kmap (kbd "D") 'djvu-occur-tablist-do-delete)
+    ;;     (define-key kmap (kbd "x") 'djvu-occur-tablist-do-flagged-delete)
+    ;;     (define-key kmap (kbd "A") 'djvu-occur-tablist-gather-documents)
+    kmap)
+  "The keymap used for `djvu-occur-buffer-mode'.")
+
 (define-derived-mode djvu-occur-mode
   tablist-mode "DJVUOccur"
   "Major mode for browsing djvu search result"
