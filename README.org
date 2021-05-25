@@ -1,4 +1,14 @@
 * djvu2.el
+
+A newer =djvu3= package is available [[https://github.com/dalanicolai/djvu3][here]]. This =djvu2= package requires the
+external [[https://imagemagick.org/index.php][Imagemagick]] program, while the =djvu3= package uses Emacs native =svg=
+rendering capabilities.
+
+Except for =dark=mode=, =djvu3= provides all features of djvu2. Additionally it
+is capable of drawing all kinds of annotation shapes. (Although shapes other
+than rectangle must be set in the annotation buffer. See =M-x man djvused= for
+djvu annotation syntax.)
+
 ** Read and annotate djvu with Emacs
    
 [[https://elpa.gnu.org/packages/djvu.html][The original djvu.el]] is a great package for annotating djvu files, but it only
